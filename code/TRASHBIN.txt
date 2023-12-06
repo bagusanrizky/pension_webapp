@@ -1,0 +1,61 @@
+### TRASHBIN
+# Benefit ga kepake
+
+# tingkat bunga aktuaria
+tingkat_bunga = st.number_input("Tingkat bunga aktuaria (per tahun)", min_value=0.000, max_value=1.000, format="%f")
+format_tingkat_bunga = "{:.2%}".format(tingkat_bunga)
+st.write("Tingkat bunga aktuaria sebesar", format_tingkat_bunga, "per tahun")
+
+# tingkat kenaikan gaji
+tingkat_kenaikan_gaji = st.number_input("Tingkat kenaikan gaji (per tahun)", min_value=0.000, max_value=1.000, format="%f")
+format_tingkat_kenaikan_gaji = "{:.2%}".format(tingkat_kenaikan_gaji)
+st.write("Tingkat kenaikan gaji sebesar", format_tingkat_kenaikan_gaji, "per tahun")
+
+# replacement ratio
+replacement_ratio_max = 0.75
+replacement_ratio_min = 0.4
+pensiun_normal_ratio = 0.025
+masa_kerja_minimal = 20
+
+# --- BENEFIT DI DATA ---
+
+#Kolom Gapok Terakhir
+if "Gapok Terakhir" not in st.session_state.df:
+    if tingkat_kenaikan_gaji > 0:
+        st.session_state.df["Gapok Terakhir"] = st.session_state.df["Gaji Pokok"] * (1+tingkat_kenaikan_gaji) ** (st.session_state.df["Usia Pensiun (r) "]-st.session_state.df["Usia sekarang (x)"]-1)
+
+#Kolom Benefit Pensiun Normal 1 Bulan
+if "Benefit Pensiun Normal (1 Bulan)" not in st.session_state.df:
+    if tingkat_kenaikan_gaji > 0:
+        st.session_state.df["Benefit Pensiun Normal (1 Bulan)"] = 0.025 * st.session_state.df["Total Masa Kerja Harapan (MK)"] * st.session_state.df["Gapok Terakhir"]
+#format nilai dalam rupiah
+#st.session_state.df["Benefit Pensiun Normal (1 Bulan)"] = st.session_state.df["Benefit Pensiun Normal (1 Bulan)"].map('Rp{:,.2f}'.format)
+
+#Kolom Benefit Pensiun Normal 1 Tahun
+if "Benefit Pensiun Normal (1 Tahun)" not in st.session_state.df:
+    if tingkat_kenaikan_gaji > 0:
+        st.session_state.df["Benefit Pensiun Normal (1 Tahun)"] = st.session_state.df["Benefit Pensiun Normal (1 Bulan)"] * 12
+
+# Kolom Benefit Pensiun Normal 1 Bulan (Taspen)
+if "Benefit Pensiun Normal Taspen(1 Bulan)" not in st.session_state.df:
+    if tingkat_kenaikan_gaji > 0:
+        condition_1 = st.session_state.df["Total Masa Kerja Harapan (MK)"] >= 20
+        condition_2 = st.session_state.df["Total Masa Kerja Harapan (MK)"] > replacement_ratio_max / pensiun_normal_ratio
+        condition_3 = st.session_state.df["Total Masa Kerja Harapan (MK)"] < replacement_ratio_min / pensiun_normal_ratio
+
+        # Use boolean indexing to set values based on conditions
+        st.session_state.df.loc[condition_1 & condition_2, "Benefit Pensiun Normal Taspen (1 Bulan)"] = replacement_ratio_max * st.session_state.df.loc[condition_1 & condition_2, "Gapok Terakhir"]
+        st.session_state.df.loc[condition_1 & condition_3, "Benefit Pensiun Normal Taspen (1 Bulan)"] = replacement_ratio_min * st.session_state.df.loc[condition_1 & condition_3, "Gapok Terakhir"]
+        st.session_state.df.loc[(condition_1 & ~(condition_2 | condition_3)), "Benefit Pensiun Normal Taspen (1 Bulan)"] = pensiun_normal_ratio * st.session_state.df.loc[(condition_1 & ~(condition_2 | condition_3)), "Total Masa Kerja Harapan (MK)"] * st.session_state.df.loc[(condition_1 & ~(condition_2 | condition_3)), "Gapok Terakhir"]
+    else:
+        st.session_state.df["Benefit Pensiun Normal Taspen (1 Bulan)"] = 0
+
+# Kolom Benefit Pensiun Normal 1 Bulan (Taspen)
+if tingkat_kenaikan_gaji > 0:
+    st.session_state.df["Benefit Pensiun Normal Taspen (1 Tahun)"] = st.session_state.df["Benefit Pensiun Normal Taspen (1 Bulan)"] * 12
+
+# kolom replacement ratio
+if tingkat_kenaikan_gaji > 0:
+    st.session_state.df["Replacement Ratio"] = st.session_state.df["Benefit Pensiun Normal Taspen (1 Bulan)"] / st.session_state.df["Gapok Terakhir"]
+
+st.dataframe(st.session_state.df)
