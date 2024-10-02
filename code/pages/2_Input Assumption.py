@@ -42,7 +42,7 @@ def recalculate_variables():
     st.session_state.df["Replacement Ratio"] = st.session_state.df["Benefit Pensiun Normal Taspen (1 Bulan)"] / st.session_state.df["Gapok Terakhir"]
 
 # Button to trigger recalculation
-if st.button("Recalculate"):
+if st.button("Calculate"):
     recalculate_variables()
 
 # Display the DataFrame
